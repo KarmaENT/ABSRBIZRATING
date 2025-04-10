@@ -2,7 +2,7 @@ import dash
 from dash import dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-import pandas as pd
+import polars as pl  # Replaced pandas with polars
 import random
 
 # Initialize Dash app with Bootstrap theme
@@ -140,7 +140,8 @@ def analyze_business_idea(n_clicks, idea):
     ))
 
     # 2. Individual Factor Scores as Bar Chart
-    df = pd.DataFrame(
+    # Replace pandas DataFrame with polars DataFrame
+    df = pl.DataFrame(
         {
             "Factor": list(scores.keys()),
             "Score": list(scores.values()),
@@ -150,16 +151,16 @@ def analyze_business_idea(n_clicks, idea):
 
     factor_scores_chart = go.Figure(data=[
         go.Bar(
-            x=df['Factor'],
-            y=df['Score'],
-            text=df['Score'],
+            x=df["Factor"].to_list(),
+            y=df["Score"].to_list(),
+            text=df["Score"].to_list(),
             textposition='auto',
-            marker=dict(color=df['Score'], colorscale='Blues', line=dict(width=1, color='black')),
+            marker=dict(color=df["Score"].to_list(), colorscale='Blues', line=dict(width=1, color='black')),
             name='Scores'
         ),
         go.Scatter(
-            x=df['Factor'],
-            y=df['Weight'],
+            x=df["Factor"].to_list(),
+            y=df["Weight"].to_list(),
             mode='lines+markers',
             name='Weights',
             line=dict(color='rgba(255, 0, 0, 0.6)', width=2)
@@ -207,17 +208,17 @@ def download_raw_data(n_clicks, idea):
     scores = generate_scores_from_idea(idea)
     abrs_score = calculate_abrs_score(scores)
 
-    # Prepare data for download
-    df = pd.DataFrame(
+    # Prepare data for download using polars DataFrame
+    df = pl.DataFrame(
         {
             "Factor": list(scores.keys()),
             "Score": list(scores.values()),
             "Weight": [weights[factor] * 100 for factor in scores],
         }
     )
-    df["ABRS Score"] = abrs_score
+    df = df.with_columns(pl.lit(abrs_score).alias("ABRS Score"))
 
-    return dcc.send_data_frame(df.to_csv, "business_analysis.csv")
+    return dcc.send_data_frame(df.to_pandas().to_csv, "business_analysis.csv")
 
 if __name__ == "__main__":
     app.run_server(debug=True)
